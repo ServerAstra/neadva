@@ -23,6 +23,7 @@ Unfortunately the limitations of NAV API and its documentation prevent this from
 
 Usage:
 -----------
+```python
     from neadva import Invoice, Transaction, SubmitInvoices, MapTaxNumber, Config
     Config.user = {"login": "login",
             "password": "password",
@@ -47,24 +48,28 @@ Usage:
     sentinvoices = invoices()
     print(sentinvoices.transaction)
     print(sentinvoices.items())
+```
 
 or since v0.5
 
+```python
     for invoice in glob.glob('Invoices/*.xml'):
         invoices.append(Invoice.fromfile(invoice))
     sentinvoices = invoices()
     print(sentinvoices.transaction)
     print(sentinvoices.items())
-
+```
 Optionally you can choose to not compress data:
+```python
     Config.compression = False
-
+```
 Or go live with:
+```python
     Config.live = True
+```
 
 Config class is global for all instances in the current interpreter run.
-However you can supply an instance explicitly via config = Config(**configvalues) where configvalues
-has user dict and software dict and includes other non-default modifications for each separate class.
+However you can supply an instance explicitly via `config = Config(**configvalues)` where configvalues has user dict and software dict and includes other non-default modifications for each separate class.
 
 Warning
 -----------
@@ -78,5 +83,5 @@ Todo:
 
 * Support for transaction search
 * Support for invoice search
-* Single interface where you just use neadva.taxinfo('12345678'), neadva.upload(*files), neadva.download(from="2021-04", till="2021-10"), neadva.status(*listofinvoices)
+* Single interface where you just use `neadva.taxinfo('12345678')` `neadva.upload(*files)` `neadva.download(from="2021-04", till="2021-10")` `neadva.status(*listofinvoices)`
 * Support for annulments
