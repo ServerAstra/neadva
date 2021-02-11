@@ -3,7 +3,7 @@ Python implementation of Hungarian Tax Office (NAV) version 3 reporting api
 -----------
 Alpha version of the module. Can be used to supply data and return transaction numbers safely. More work required for full transfer support of NAV API.
 Clone the repo to install:
-`git clone https://github.com/andrew-azarov/navapi-py`
+`git clone https://github.com/andrew-azarov/neadva`
 
 Warning:
 -----------
