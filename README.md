@@ -72,7 +72,7 @@ Tested only with test interface of NAV not production interface. Might still hav
 
 Modules required:
 -----------
-`pip install pycryptodome`
+`pip install pycryptodome lxml base62 requests`
 
 Todo:
 
