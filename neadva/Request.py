@@ -612,6 +612,13 @@ class Invoice(_ImmutableAttributesMixIn):
         self.signature = Util.sha3_512(
             self.operation.value.encode()+self.byteval)
 
+    @classmethod
+    def fromfile(cls, filename: str, operation: Literal[INVOICEOP.CREATE, INVOICEOP.UPDATE, INVOICEOP.CANCEL] = INVOICEOP.CREATE, config: Optional[Config] = None):
+        data = ""
+        with open(filename, 'r') as f:
+            data = f.read()
+        return cls(data, operation=operation, config=config)
+
     def __bytes__(self):
         if self.valid:
             return self.byteval
