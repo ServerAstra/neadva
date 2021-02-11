@@ -6,7 +6,7 @@ This module is a NAV report protocol implementation for Python.
 
 Do not use this module directly, instead import from NAV module itself like:
 
-    from NAV import Invoice, Transaction, SubmitInvoices, MapTaxNumber, Config
+    from neadva import Invoice, Transaction, SubmitInvoices, MapTaxNumber, Config
     Config.user = {"login": "login",
             "password": "password",
             "taxNumber": "12345678",
@@ -583,9 +583,9 @@ class Invoice(_ImmutableAttributesMixIn):
     Invoice representation
     Arguments:
         xml (str): XML data of invoice
-        operation (NAV.INVOICEOP): one of the operations from enum NAV.INVOICEOP
+        operation (neadva.INVOICEOP): one of the operations from enum neadva.INVOICEOP
     Attributes:
-        .operation (NAV.INVOICEOP): one of the operations from enum NAV.INVOICEOP
+        .operation (neadva.INVOICEOP): one of the operations from enum neadva.INVOICEOP
         .xml (str): XML data of invoice
         .byteval (bytes): byte value of the compressed or non-compressed invoice (based on config instance value)
     Returns:
@@ -665,11 +665,11 @@ class SubmitInvoices(_ImmutableAttributesMixIn, _BaseRequest):
     When instance is called successfully transaction is saved into .transaction attribute
 
     Arguments:
-        invoice (list(NAV.Invoice)): optionally provide list of invoices.
-        config (NAV.Config): optionally provide custom Config instance
+        invoice (list(neadva.Invoice)): optionally provide list of invoices.
+        config (neadva.Config): optionally provide custom Config instance
     Attributes:
-        .transaction (NAV.Transaction): transaction instance
-        .invoices (deque(NAV.Invoice, 100)): limited list of invoices.
+        .transaction (neadva.Transaction): transaction instance
+        .invoices (deque(neadva.Invoice, 100)): limited list of invoices.
         .compression: whether to compress or not, gets data from Config - please make sure not to manipulate this as you cannot send compressed and non-compressed invoices
     Returns:
         (str): representation is empty
