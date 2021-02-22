@@ -43,6 +43,7 @@ import os
 import lxml
 from . import Util
 from .Config import Config
+from time import sleep
 from urllib.request import pathname2url
 from urllib.parse import urljoin
 from datetime import datetime, timezone
@@ -56,7 +57,7 @@ from lxml import objectify, etree
 class STATUSOP(Enum):
     PREPARE = "PREPARE"
     DONE = "DONE"
-    ERROR = "ERROR"
+    FAILED = "FAILED"
 
 
 class INVOICEOP(Enum):
@@ -169,18 +170,21 @@ class _BaseRequest(object):
             f()
         response_xml property will be filled with lxml.etree.Element
         Will raise an error in case the request is invalid - shouldn't happen.
+        Raises DocumentError in case of invalid XML before request
+        Raises RequestError in and during Transport
+        Raises ResponseError in case of invalid response which doesn't validate
         """
-        try:
-            self.request_valid
-        except Exception as exc:
+        if not self.request_valid:
             raise DocumentError(
                 "Error:Invalid:XMLData", "XML did not validate, check the xml of request") from exc
         else:
             self.__post()
+            self.request_status = STATUSOP.DONE  # After this portion request is done
             if len(self.response_xml):
                 try:
                     self.validate('api', self.response_xml)
                 except Exception as exc:
+                    self.response_status = STATUSOP.FAILED
                     raise ResponseError(
                         "Error:Invalid:Response", "Response did not validate, check xml of response") from exc
                 try:
@@ -188,9 +192,9 @@ class _BaseRequest(object):
                     status = self.response_xml.findtext(
                         f".//{self.config.ns('common')}funcCode")
                     if status.upper() == 'OK':
-                        self.request_status = STATUSOP.DONE
+                        self.response_status = STATUSOP.DONE
                     else:
-                        self.request_status = STATUSOP.ERROR
+                        self.response_status = STATUSOP.FAILED
                 except Exception as exc:
                     raise ResponseError("Error:Invalid:Response",
                                         "Response has problems") from exc
@@ -209,17 +213,25 @@ class _BaseRequest(object):
                 'Content-Type': 'application/xml;charset="UTF-8"', 'Accept': 'application/xml'}, timeout=60)
             self.response_xml = etree.XML(request.content)
         except requests.exceptions.Timeout:
-            raise ResponseError("Error:Timeout:Response",
-                                "Response from endpoint timed out")
+            self.request_status = STATUSOP.FAILED
+            self.response_status = STATUSOP.FAILED
+            raise RequestError("Error:Timeout:Request",
+                               "Response from endpoint timed out")
         except requests.exceptions.HTTPError:
-            raise ResponseError("Error:Invalid:Response",
-                                "HTTP Error")
+            self.request_status = STATUSOP.FAILED
+            self.response_status = STATUSOP.FAILED
+            raise RequestError("Error:Invalid:Request",
+                               "HTTP Error")
         except requests.exceptions.TooManyRedirects:
-            raise ResponseError("Error:Invalid:Endpoint",
-                                "Endpoint reports redirects which should not happen")
+            self.request_status = STATUSOP.FAILED
+            self.response_status = STATUSOP.FAILED
+            raise RequestError("Error:Invalid:Request",
+                               "Endpoint reports redirects which should not happen")
         except Exception as exc:
-            raise ResponseError(
-                "Error:Unknown:Response", "Unknown error raised, check previous exceptions") from exc
+            self.request_status = STATUSOP.FAILED
+            self.response_status = STATUSOP.FAILED
+            raise RequestError(
+                "Error:Unknown:Request", "Unknown error raised, check previous exceptions") from exc
 
     def validate(self, scheme: Literal['api', 'data', 'annulment'] = 'api', xml: Optional[etree.Element] = []) -> None:
         """
@@ -442,43 +454,13 @@ class Token(_ImmutableAttributesMixIn, _BaseRequest):
         """
         Returns validity of token, returns False or True
         """
-        try:
-            super().valid
-        except ResponseError:
+        if self.used:
             return False
-        else:
-            if self.used:
-                return False
-            return self.validfrom < datetime.now(timezone.utc) < self.validtill
-
-
-class _GetTransactionState(_ImmutableAttributesMixIn, _BaseRequest):
-
-    def __init__(self, id, config: Optional[Config] = None):
-        self.accessible_attributes = {'id': None,
-                                      'originalrequest': None, 'state': None}
-        super().__init__(operation='QueryTransactionStatus', config=self._config)
-        self.id = id
-
-    def __call__(self, returnrequest: bool = False):
-        api = self.config.ns('api')
-        etree.SubElement(
-            self.request_xml, f"{api}transactionId").text = self.id
-        if returnrequest:
-            etree.SubElement(
-                self.request_xml, f"{api}returnOriginalRequest").text = 'true'
-        else:
-            etree.SubElement(
-                self.request_xml, f"{api}returnOriginalRequest").text = 'false'
-        super().__call__()
-        print(etree.tostring(self.response_xml, pretty_print=True).decode())
-        return self
-
-    def __str__(self):
-        if self.token:
-            if self.valid:
-                return self.token
-        return ""
+        try:
+            sleep((self.validfrom - datetime.now(timezone.utc)).total_seconds())
+        except ValueError:
+            pass  # bug if nav server drifting.
+        return self.validfrom < datetime.now(timezone.utc) < self.validtill
 
 
 class MapTaxNumber(_ImmutableAttributesMixIn, _BaseRequest):
@@ -546,6 +528,31 @@ class MapTaxNumber(_ImmutableAttributesMixIn, _BaseRequest):
             return self._validtaxpayer
 
 
+class _GetTransactionState(_ImmutableAttributesMixIn, _BaseRequest):
+
+    def __init__(self, id, config: Optional[Config] = None):
+        self.accessible_attributes = {'id': None,
+                                      'originalrequest': None, 'state': None}
+        super().__init__(operation='QueryTransactionStatus', config=self._config)
+        self.id = id
+
+    def __call__(self, returnrequest: bool = False):
+        api = self.config.ns('api')
+        etree.SubElement(
+            self.request_xml, f"{api}transactionId").text = self.id
+        if returnrequest:
+            etree.SubElement(
+                self.request_xml, f"{api}returnOriginalRequest").text = 'true'
+        else:
+            etree.SubElement(
+                self.request_xml, f"{api}returnOriginalRequest").text = 'false'
+        super().__call__()
+        return self
+
+    def __str__(self):
+        return self.response
+
+
 class Transaction(_ImmutableAttributesMixIn):
     """
     Todo: If required, will be a class implementing Transaction querying in a form of lazy document akin to ORM
@@ -554,7 +561,7 @@ class Transaction(_ImmutableAttributesMixIn):
     statuses = [RESPONSEOP.RECEIVED, RESPONSEOP.PROCESSING,
                 RESPONSEOP.SAVED, RESPONSEOP.FINISHED, RESPONSEOP.NOTIFIED]
 
-    def __init__(self, id: str, date: datetime, config: Optional[Config] = None):
+    def __init__(self, id: str, date: datetime = datetime.now(timezone.utc), config: Optional[Config] = None):
         self.accessible_attributes = {'id': None}
         super().__init__(config=self._config)
         self.id = id
@@ -576,6 +583,26 @@ class Transaction(_ImmutableAttributesMixIn):
         self.valid = state.valid
         self.request_valid = state.request_valid
         return self
+
+    @property
+    def status(self) -> list:
+        if self.response_xml is not None:
+            returnlist = []
+            for i in self.response_xml.iterfind(f".//{self._config.ns('api')}processingResult"):
+                retval = []
+                for x in i.iter():
+                    if 'businessValidationMessages' in x.tag or 'technicalValidationMessages' in x.tag:
+                        for d in x.iter():
+                            if d.text:
+                                retval.append({d.tag.split('}')[1]: d.text})
+                        continue
+                    if x.text:
+                        retval.append({x.tag.split('}')[1]: x.text})
+                returnlist.append(retval)
+            return returnlist
+        else:
+            raise CheckError('Error:Invalid:Call',
+                             'Cannot retreive status without calling the class')
 
 
 class Invoice(_ImmutableAttributesMixIn):
@@ -776,18 +803,19 @@ class SubmitInvoices(_ImmutableAttributesMixIn, _BaseRequest):
     @ property
     def valid(self) -> bool:
         """
-        Returns whether request succeded or not, or None if no request made
+        Returns whether request succeeded or not, or False if no request made
         """
         if self.request_status == STATUSOP.PREPARE:
-            return None
-        return self.request_status == STATUSOP.DONE
+            return False
+        return self.request_status == STATUSOP.DONE and self.response_status == STATUSOP.DONE
 
     @ property
     def request_valid(self) -> bool:
         if not self.token:
             return False
         if not all([x.valid for x in self.invoices]):
-            return False
+            raise CheckError('Error:Invalid:Invoice',
+                             'Some invoices are not valid')
         return super().request_valid
 
 
