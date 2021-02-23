@@ -763,6 +763,12 @@ class SubmitInvoices(_ImmutableAttributesMixIn, _BaseRequest):
     def count(self, val: Invoice):
         return self.invoices.count(val)
 
+    def __iter__(self):
+        return self.invoices.__iter__()
+
+    def next(self):
+        return self.invoices.next()
+
     def __str__(self):
         return ""
 
