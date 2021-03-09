@@ -561,11 +561,11 @@ class Transaction(_ImmutableAttributesMixIn):
     statuses = [RESPONSEOP.RECEIVED, RESPONSEOP.PROCESSING,
                 RESPONSEOP.SAVED, RESPONSEOP.FINISHED, RESPONSEOP.NOTIFIED]
 
-    def __init__(self, tid: Union[str, Transaction], date: datetime = datetime.now(timezone.utc), config: Optional[Config] = None):
+    def __init__(self, tid, date: datetime = datetime.now(timezone.utc), config: Optional[Config] = None):
         self.accessible_attributes = {'id': None}
         super().__init__(config=self._config)
-        if isinstance(tid, Transaction):
-            self = tid
+        if isinstance(tid, self.__class__):
+            self.id = tid.id
         else:
             self.id = str(tid)
 
