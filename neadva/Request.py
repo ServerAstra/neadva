@@ -423,10 +423,10 @@ class Token(_ImmutableAttributesMixIn, _BaseRequest):
         super().__call__()
         self.token = Util.aes128_decrypt(self.response_xml.findtext(
             f'.//{api}encodedExchangeToken'), self.config.user['exchangeKey'])
-        self.validfrom = datetime.fromisoformat(
-            self.response_xml.findtext(f'.//{api}tokenValidityFrom').replace('Z', '+00:00'))
-        self.validtill = datetime.fromisoformat(
-            self.response_xml.findtext(f'.//{api}tokenValidityTo').replace('Z', '+00:00'))
+        self.validfrom = datetime.strptime(
+            self.response_xml.findtext(f'.//{api}tokenValidityFrom').replace('Z', '+00:00'), "%Y-%m-%dT%H:%M:%S.%f%z")
+        self.validtill = datetime.strptime(
+            self.response_xml.findtext(f'.//{api}tokenValidityTo').replace('Z', '+00:00'), "%Y-%m-%dT%H:%M:%S.%f%z")
         return self
 
     def __eq__(self, other):
