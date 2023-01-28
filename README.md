@@ -8,7 +8,7 @@ More work required for full interface support of NAV API.
 
 Clone the repo to install:
 
-`git clone https://github.com/andrew-azarov/neadva`
+`git clone https://github.com/ServerAstra/neadva`
 
 or install using pip:
 
@@ -78,7 +78,7 @@ Tested only with test interface of NAV not production interface. Might still hav
 
 Modules required:
 -----------
-`pip install pycryptodome lxml base62 requests`
+`pip install pycryptodome lxml pybase62 requests`
 
 Todo:
 
