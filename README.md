@@ -1,7 +1,7 @@
 # neadva
 Python 3 implementation of Hungarian Tax Office (NAV) version 3 reporting api
 -----------
-0.51 Alpha version of the module. Can be used to supply data and return transaction numbers safely (working).
+0.52 Alpha version update of the module. Can be used to supply data and return transaction numbers safely (working).
 Suggest to check the invoices before submitting in the test interface of NAV API first
 
 More work required for full interface support of NAV API.
